@@ -15,7 +15,7 @@ unsigned char foodX, foodY;
 char direction;
 char gameOver;
 
-unsigned short gameSpeed = 200;
+unsigned short gameSpeed = 400;
 
 COORD cursor;
 
@@ -27,20 +27,6 @@ void hideCursor() {
 }
 
 void spawnFood() {
-    /*
-    int valid = 0; // false
-    while (!valid) {
-        foodX = rand() % WIDTH;
-        foodY = rand() % HEIGHT;
-        valid = 1; // true
-        for (int i = 0; i < snakeLength; i++) {
-            if (snakeX[i] == foodX && snakeY[i] == foodY) {
-                valid = 0; // false
-                break;
-            }
-        }
-    }
-    */
     _asm {
         MOV AL, 0 // isValid = false
 
@@ -101,29 +87,235 @@ void draw() {
     cursor.X = 0;
     cursor.Y = 0;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), cursor);
-
+    
     for (int y = -1; y <= HEIGHT; y++) {
         for (int x = -1; x <= WIDTH; x++) {
             if (x == -1 || x == WIDTH || y == -1 || y == HEIGHT) {
                 printf("#");
+                continue;
             }
-            else if (x == foodX && y == foodY) {
+            if (x == foodX && y == foodY) {
                 printf("Q");
+                continue;
             }
-            else {
-                int printed = 0;
-                for (int i = 0; i < snakeLength; i++) {
-                    if (snakeX[i] == x && snakeY[i] == y) {
-                        if (i == 0) printf("@");
-                        else printf("o");
-                        printed = 1;
-                    }
+            
+            int printed = 0;
+            for (int i = 0; i < snakeLength; i++) {
+                if (snakeX[i] == x && snakeY[i] == y) {
+                    if (i == 0) printf("@");
+                    else printf("o");
+                    printed = 1;
                 }
-                if (!printed) printf(" ");
             }
+            if (printed == 0) printf(" ");
+            
         }
         printf("\n");
     }
+    
+
+    /*
+    _asm {
+        MOV AL, -1; // y
+        MOV AH, HEIGHT;
+
+        for_draw_Y_start:
+        CMP AL, AH;
+        JG for_draw_Y_end;
+
+            MOV BL, -1; // x
+            MOV BH, WIDTH;
+            for_draw_X_start:
+            CMP BL, BH;
+            JG for_draw_X_end;
+
+                CMP BL, -1;
+                JE draw_print_border;
+                CMP BL, BH;
+                JE draw_print_border;
+                CMP AL, -1;
+                JE draw_print_border;
+                CMP AL, AH;
+                JE draw_print_border;
+
+                MOV CL, foodX;
+                MOV CH, foodY;
+                CMP CL, BL;
+                JNZ draw_food_false;
+                CMP CH, AL;
+                JNZ draw_food_false; 
+    }           printf("Q");
+    _asm{
+                JMP for_draw_X_continue;
+
+
+                draw_food_false:/// ecx i edx sa wolne
+                MOV CH, 0; // isPrinted
+                MOV EDX, 0; // i
+                MOV CL, snakeLength;
+                LEA ESI, snakeX;
+                LEA EDI, snakeY;
+                for_draw_snake_start:
+                    CMP DL, CL;
+                    JAE for_draw_snake_end;
+
+                    CMP [ESI + EDX], BL;
+                    JNZ skip_print_snake;
+                    CMP [ESI + EDX], AL;
+                    JNZ skip_print_snake;
+
+                    CMP DL, 0;
+                    JZ print_snake_head;
+    }               printf("o"); 
+    _asm {
+                    JMP print_end;
+
+                    print_snake_head:
+    }               printf("@"); 
+    _asm {
+                    print_end:
+                    MOV CH, 1;
+                    skip_print_snake:
+
+                    ADD DH, 1;
+                    JMP for_draw_snake_start;
+                for_draw_snake_end:
+                CMP CH, 0;
+                JNZ for_draw_X_continue;
+    }           printf(" "); 
+    _asm {
+                JMP for_draw_X_continue;
+
+
+                draw_print_border:
+    }           printf("#"); 
+    _asm {
+                JMP for_draw_X_continue;
+                
+                
+            for_draw_X_continue:
+            ADD BL, 1;
+            JMP for_draw_X_start;
+            for_draw_X_end:
+
+        ADD AL, 1;
+    }   printf("\n"); 
+    _asm {
+        JMP for_draw_Y_start;
+        for_draw_Y_end:
+    }
+    
+    */
+/*
+_asm {
+    push ebx
+    push esi
+    push edi
+
+    mov al, -1; //y = -1
+    mov ah, HEIGHT; //AH = HEIGHT
+
+    for_draw_Y_start :
+    cmp al, ah
+        jg for_draw_Y_end
+
+        mov bl, -1; // x = -1
+        mov bh, WIDTH; //BH = WIDTH
+
+        for_draw_X_start :
+    cmp bl, bh
+        jg for_draw_X_end
+
+        ; if border
+        cmp bl, -1
+        je draw_print_border
+        cmp bl, bh
+        je draw_print_border
+        cmp al, -1
+        je draw_print_border
+        cmp al, ah
+        je draw_print_border
+
+        ; if food
+        mov cl, foodX
+        cmp cl, bl
+        jne draw_food_false
+        mov cl, foodY
+        cmp cl, al
+        jne draw_food_false
+}
+printf("Q");
+_asm {
+    jmp for_draw_X_continue
+
+    draw_food_false :
+    xor ch, ch; //printed = 0
+        xor edx, edx; //i = 0
+        mov cl, snakeLength
+        lea esi, snakeX
+        lea edi, snakeY
+
+        for_draw_snake_start :
+    cmp dl, cl
+        jae for_draw_snake_end
+
+        mov al, [esi + edx]
+        cmp al, bl
+        jne skip_print_snake
+        mov al, [edi + edx]
+        cmp al, al; //porównanie z y(AL zawiera y)
+        jne skip_print_snake
+
+        cmp dl, 0
+        jz print_snake_head
+}
+printf("o");
+_asm {
+    jmp print_end
+
+    print_snake_head :
+}
+printf("@");
+_asm {
+print_end:
+    mov ch, 1; printed = 1
+
+        skip_print_snake:
+    inc dl
+        jmp for_draw_snake_start
+
+        for_draw_snake_end :
+    cmp ch, 0
+        jne for_draw_X_continue
+}
+printf(" ");
+_asm {
+    jmp for_draw_X_continue
+
+    draw_print_border :
+}
+printf("#");
+_asm {
+
+for_draw_X_continue:
+    inc bl
+        jmp for_draw_X_start
+
+        for_draw_X_end :
+}
+printf("\n");
+_asm {
+    inc al
+    jmp for_draw_Y_start
+
+    for_draw_Y_end :
+    pop edi
+        pop esi
+        pop ebx
+}
+*/
+
+
 }
 
 void input() {
